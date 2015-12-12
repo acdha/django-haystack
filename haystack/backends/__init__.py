@@ -405,10 +405,13 @@ class SearchNode(tree.Node):
         parts = expression.split(FILTER_SEPARATOR)
         field = parts[0]
 
-        if len(parts) == 1 or parts[-1] not in VALID_FILTERS:
-            filter_type = 'contains'
+        if len(parts) == 1:
+            filter_type = 'matches'
         else:
             filter_type = parts.pop()
+
+        if filter_type not in VALID_FILTERS:
+            raise ValueError('Expression %s has an unknown filter type %s' % (expression, filter_type))
 
         return (field, filter_type)
 

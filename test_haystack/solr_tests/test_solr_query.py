@@ -81,6 +81,10 @@ class SolrSearchQueryTestCase(TestCase):
         self.sq.add_filter(SQ(rating__range=[3, 5]))
         self.assertEqual(self.sq.build_query(), u'((why) AND pub_date:([* TO "2009-02-10 01:59:00"]) AND author:({"daniel" TO *}) AND created:({* TO "2009-02-12 12:13:00"}) AND title:(["B" TO *]) AND id:("1" OR "2" OR "3") AND rating:(["3" TO "5"]))')
 
+    def test_build_query_contains_filter(self):
+        self.sq.add_filter(SQ(content__contains='test'))
+        self.assertEqual(self.sq.build_query(), u'(*test*)')
+
     def test_build_complex_altparser_query(self):
         self.sq.add_filter(SQ(content=AltParser('dismax', "Don't panic", qf='text')))
         self.sq.add_filter(SQ(pub_date__lte=Exact('2009-02-10 01:59:00')))

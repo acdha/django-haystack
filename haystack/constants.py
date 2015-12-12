@@ -15,7 +15,10 @@ DJANGO_ID = getattr(settings, 'HAYSTACK_DJANGO_ID_FIELD', 'django_id')
 DEFAULT_OPERATOR = getattr(settings, 'HAYSTACK_DEFAULT_OPERATOR', 'AND')
 
 # Valid expression extensions.
-VALID_FILTERS = set(['contains', 'exact', 'gt', 'gte', 'lt', 'lte', 'in', 'startswith', 'range'])
+# These generally follow the standard Django ORM lookup filters except for `matches`,
+# which follows the old fuzzy search engine behaviour – e.g. `foo bar` is treated as "foo AND bar" without
+# the ordering restriction imposed by `contains`:
+VALID_FILTERS = {'matches', 'contains', 'exact', 'gt', 'gte', 'lt', 'lte', 'in', 'startswith', 'range'}
 FILTER_SEPARATOR = '__'
 
 # The maximum number of items to display in a SearchQuerySet.__repr__

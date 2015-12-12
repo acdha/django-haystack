@@ -34,7 +34,7 @@ class SQTestCase(TestCase):
     def test_split_expression(self):
         sq = SQ(foo='bar')
 
-        self.assertEqual(sq.split_expression('foo'), ('foo', 'contains'))
+        self.assertEqual(sq.split_expression('foo'), ('foo', 'matches'))
         self.assertEqual(sq.split_expression('foo__exact'), ('foo', 'exact'))
         self.assertEqual(sq.split_expression('foo__contains'), ('foo', 'contains'))
         self.assertEqual(sq.split_expression('foo__lt'), ('foo', 'lt'))
@@ -45,28 +45,29 @@ class SQTestCase(TestCase):
         self.assertEqual(sq.split_expression('foo__startswith'), ('foo', 'startswith'))
         self.assertEqual(sq.split_expression('foo__range'), ('foo', 'range'))
 
-        # Unrecognized filter. Fall back to exact.
-        self.assertEqual(sq.split_expression('foo__moof'), ('foo', 'contains'))
+    def test_invalid_filter_type(self):
+        sq = SQ(foo='bar')
+        self.assertRaises(ValueError, sq.split_expression, 'foo__moof')
 
     def test_repr(self):
-        self.assertEqual(repr(SQ(foo='bar')), '<SQ: AND foo__contains=bar>')
-        self.assertEqual(repr(SQ(foo=1)), '<SQ: AND foo__contains=1>')
-        self.assertEqual(repr(SQ(foo=datetime.datetime(2009, 5, 12, 23, 17))), '<SQ: AND foo__contains=2009-05-12 23:17:00>')
+        self.assertEqual(repr(SQ(foo='bar')), '<SQ: AND foo__matches=bar>')
+        self.assertEqual(repr(SQ(foo=1)), '<SQ: AND foo__matches=1>')
+        self.assertEqual(repr(SQ(foo=datetime.datetime(2009, 5, 12, 23, 17))), '<SQ: AND foo__matches=2009-05-12 23:17:00>')
 
     def test_simple_nesting(self):
         sq1 = SQ(foo='bar')
         sq2 = SQ(foo='bar')
         bigger_sq = SQ(sq1 & sq2)
-        self.assertEqual(repr(bigger_sq), '<SQ: AND (foo__contains=bar AND foo__contains=bar)>')
+        self.assertEqual(repr(bigger_sq), '<SQ: AND (foo__matches=bar AND foo__matches=bar)>')
 
         another_bigger_sq = SQ(sq1 | sq2)
-        self.assertEqual(repr(another_bigger_sq), '<SQ: AND (foo__contains=bar OR foo__contains=bar)>')
+        self.assertEqual(repr(another_bigger_sq), '<SQ: AND (foo__matches=bar OR foo__matches=bar)>')
 
         one_more_bigger_sq = SQ(sq1 & ~sq2)
-        self.assertEqual(repr(one_more_bigger_sq), '<SQ: AND (foo__contains=bar AND NOT (foo__contains=bar))>')
+        self.assertEqual(repr(one_more_bigger_sq), '<SQ: AND (foo__matches=bar AND NOT (foo__matches=bar))>')
 
         mega_sq = SQ(bigger_sq & SQ(another_bigger_sq | ~one_more_bigger_sq))
-        self.assertEqual(repr(mega_sq), '<SQ: AND ((foo__contains=bar AND foo__contains=bar) AND ((foo__contains=bar OR foo__contains=bar) OR NOT ((foo__contains=bar AND NOT (foo__contains=bar)))))>')
+        self.assertEqual(repr(mega_sq), '<SQ: AND ((foo__matches=bar AND foo__matches=bar) AND ((foo__matches=bar OR foo__matches=bar) OR NOT ((foo__matches=bar AND NOT (foo__matches=bar)))))>')
 
 
 class BaseSearchQueryTestCase(TestCase):
@@ -96,15 +97,15 @@ class BaseSearchQueryTestCase(TestCase):
 
         self.bsq.add_filter(SQ(claris='moof'), use_or=True)
 
-        self.assertEqual(repr(self.bsq.query_filter), '<SQ: OR ((foo__contains=bar AND foo__lt=10 AND NOT (claris__contains=moof)) OR claris__contains=moof)>')
+        self.assertEqual(repr(self.bsq.query_filter), '<SQ: OR ((foo__matches=bar AND foo__lt=10 AND NOT (claris__matches=moof)) OR claris__matches=moof)>')
 
         self.bsq.add_filter(SQ(claris='moof'))
 
-        self.assertEqual(repr(self.bsq.query_filter), '<SQ: AND (((foo__contains=bar AND foo__lt=10 AND NOT (claris__contains=moof)) OR claris__contains=moof) AND claris__contains=moof)>')
+        self.assertEqual(repr(self.bsq.query_filter), '<SQ: AND (((foo__matches=bar AND foo__lt=10 AND NOT (claris__matches=moof)) OR claris__matches=moof) AND claris__matches=moof)>')
 
         self.bsq.add_filter(SQ(claris='wtf mate'))
 
-        self.assertEqual(repr(self.bsq.query_filter), '<SQ: AND (((foo__contains=bar AND foo__lt=10 AND NOT (claris__contains=moof)) OR claris__contains=moof) AND claris__contains=moof AND claris__contains=wtf mate)>')
+        self.assertEqual(repr(self.bsq.query_filter), '<SQ: AND (((foo__matches=bar AND foo__lt=10 AND NOT (claris__matches=moof)) OR claris__matches=moof) AND claris__matches=moof AND claris__matches=wtf mate)>')
 
     def test_add_order_by(self):
         self.assertEqual(len(self.bsq.order_by), 0)
@@ -603,37 +604,37 @@ class SearchQuerySetTestCase(TestCase):
     def test_auto_query(self):
         sqs = self.msqs.auto_query('test search -stuff')
         self.assertTrue(isinstance(sqs, SearchQuerySet))
-        self.assertEqual(repr(sqs.query.query_filter), '<SQ: AND content__contains=test search -stuff>')
+        self.assertEqual(repr(sqs.query.query_filter), '<SQ: AND content__matches=test search -stuff>')
 
         sqs = self.msqs.auto_query('test "my thing" search -stuff')
         self.assertTrue(isinstance(sqs, SearchQuerySet))
-        self.assertEqual(repr(sqs.query.query_filter), '<SQ: AND content__contains=test "my thing" search -stuff>')
+        self.assertEqual(repr(sqs.query.query_filter), '<SQ: AND content__matches=test "my thing" search -stuff>')
 
         sqs = self.msqs.auto_query('test "my thing" search \'moar quotes\' -stuff')
         self.assertTrue(isinstance(sqs, SearchQuerySet))
-        self.assertEqual(repr(sqs.query.query_filter), '<SQ: AND content__contains=test "my thing" search \'moar quotes\' -stuff>')
+        self.assertEqual(repr(sqs.query.query_filter), '<SQ: AND content__matches=test "my thing" search \'moar quotes\' -stuff>')
 
         sqs = self.msqs.auto_query('test "my thing" search \'moar quotes\' "foo -stuff')
         self.assertTrue(isinstance(sqs, SearchQuerySet))
-        self.assertEqual(repr(sqs.query.query_filter), '<SQ: AND content__contains=test "my thing" search \'moar quotes\' "foo -stuff>')
+        self.assertEqual(repr(sqs.query.query_filter), '<SQ: AND content__matches=test "my thing" search \'moar quotes\' "foo -stuff>')
 
         sqs = self.msqs.auto_query('test - stuff')
         self.assertTrue(isinstance(sqs, SearchQuerySet))
-        self.assertEqual(repr(sqs.query.query_filter), "<SQ: AND content__contains=test - stuff>")
+        self.assertEqual(repr(sqs.query.query_filter), "<SQ: AND content__matches=test - stuff>")
 
         # Ensure bits in exact matches get escaped properly as well.
         sqs = self.msqs.auto_query('"pants:rule"')
         self.assertTrue(isinstance(sqs, SearchQuerySet))
-        self.assertEqual(repr(sqs.query.query_filter), '<SQ: AND content__contains="pants:rule">')
+        self.assertEqual(repr(sqs.query.query_filter), '<SQ: AND content__matches="pants:rule">')
 
         # Now with a different fieldname
         sqs = self.msqs.auto_query('test search -stuff', fieldname='title')
         self.assertTrue(isinstance(sqs, SearchQuerySet))
-        self.assertEqual(repr(sqs.query.query_filter), "<SQ: AND title__contains=test search -stuff>")
+        self.assertEqual(repr(sqs.query.query_filter), "<SQ: AND title__matches=test search -stuff>")
 
         sqs = self.msqs.auto_query('test "my thing" search -stuff', fieldname='title')
         self.assertTrue(isinstance(sqs, SearchQuerySet))
-        self.assertEqual(repr(sqs.query.query_filter), '<SQ: AND title__contains=test "my thing" search -stuff>')
+        self.assertEqual(repr(sqs.query.query_filter), '<SQ: AND title__matches=test "my thing" search -stuff>')
 
     def test_count(self):
         self.assertEqual(self.msqs.count(), 23)

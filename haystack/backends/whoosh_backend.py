@@ -824,7 +824,8 @@ class WhooshSearchQuery(BaseSearchQuery):
             index_fieldname = u'%s:' % connections[self._using].get_unified_index().get_index_fieldname(field)
 
         filter_types = {
-            'contains': '%s',
+            'matches': '%s',
+            'contains': '*%s*',
             'startswith': "%s*",
             'exact': '%s',
             'gt': "{%s to}",
@@ -836,7 +837,7 @@ class WhooshSearchQuery(BaseSearchQuery):
         if value.post_process is False:
             query_frag = prepared_value
         else:
-            if filter_type in ['contains', 'startswith']:
+            if filter_type in ['matches', 'contains', 'startswith']:
                 if value.input_type_name == 'exact':
                     query_frag = prepared_value
                 else:
